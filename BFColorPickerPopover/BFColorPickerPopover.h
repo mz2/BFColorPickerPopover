@@ -34,6 +34,9 @@
 
 @interface BFColorPickerPopover : NSPopover
 
+@property (nonatomic, weak) IBOutlet NSView *accessoryView;
+@property (nonatomic, weak) IBOutlet NSButton *doneButton;
+
 @property (nonatomic) id target;
 @property (nonatomic) SEL action;
 @property (nonatomic, weak) NSColor *color;

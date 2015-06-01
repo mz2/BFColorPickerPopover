@@ -75,7 +75,8 @@
 {
     static BFColorPickerPopover *sharedPopover = nil;
     static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
+    dispatch_once(&onceToken, ^
+    {
         sharedPopover = [[BFColorPickerPopover alloc] init];
     });
     return sharedPopover;
@@ -87,6 +88,11 @@
     if (self) {
 		self.behavior = NSPopoverBehaviorSemitransient;
 		_color = [NSColor whiteColor];
+        
+        // Make sure our accessory view is ready to go
+        NSArray *topLevelObjects = nil;
+        BOOL success = [[NSBundle mainBundle] loadNibNamed:@"BFColorPickerPopoverAccessoryView" owner:self topLevelObjects:&topLevelObjects];
+        NSAssert(success, @"Must be able to load NIB named BFColorPickerPopoverAccessoryView");
 	}
     return self;
 }
@@ -94,8 +100,10 @@
 #pragma mark -
 #pragma mark Getters & Setters
 
-- (NSColorPanel *)colorPanel {
-	return ((BFColorPickerViewController *)self.contentViewController).colorPanel;
+- (NSColorPanel *)colorPanel
+{
+    NSColorPanel *colorPanel = ((BFColorPickerViewController *)self.contentViewController).colorPanel;
+    return colorPanel;
 }
 
 - (NSColor *)color {
@@ -112,9 +120,9 @@
 #pragma mark -
 #pragma mark Popover Lifecycle
 
-- (void)showRelativeToRect:(NSRect)positioningRect ofView:(NSView *)positioningView preferredEdge:(NSRectEdge)preferredEdge {
-	
-	// Close the popover without an animation if it's already on screen.
+- (void)showRelativeToRect:(NSRect)positioningRect ofView:(NSView *)positioningView preferredEdge:(NSRectEdge)preferredEdge
+{
+    // Close the popover without an animation if it's already on screen.
 	if (self.isShown) {
 		id targetBackup = self.target;
 		SEL actionBackup = self.action;
@@ -127,9 +135,16 @@
 	}
 	
 	self.contentViewController = [[BFColorPickerViewController alloc] init];
+    [self.contentViewController view];
+    self.colorPanel.accessoryView = self.accessoryView;
+    
 	[super showRelativeToRect:positioningRect ofView:positioningView preferredEdge:preferredEdge];
-	
-	self.colorPanel.color = _color;
+    
+    self.doneButton.target = self.target;
+    self.doneButton.action = self.action;
+    
+    self.colorPanel.showsAlpha = NO;
+    self.colorPanel.color = _color;
 	self.observingColor = YES;
 }
 
@@ -194,18 +209,20 @@
 #pragma mark Observation
 
 // Notify the target when the color changes.
-- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
-	if (object == self.colorPanel && [keyPath isEqualToString:@"color"] && context == (__bridge void *)self) {
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
+{
+	if ([change[NSKeyValueChangeKindKey] unsignedIntegerValue] == NSKeyValueChangeSetting && object == self.colorPanel && [keyPath isEqualToString:@"color"] && context == (__bridge void *)self)
+    {
 		_color = self.colorPanel.color;
-		if (self.target && self.action && [self.target respondsToSelector:self.action]) {
-      
+        self.doneButton.enabled = (_color != nil);
+        
+/*		if (self.target && self.action && [self.target respondsToSelector:self.action])
+        {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-
 			[self.target performSelector:self.action withObject:self];
-      
 #pragma clang diagnostic pop
-		}
+		}*/
 	}
 }
 
